@@ -48,15 +48,25 @@ const TakeQuiz: React.FC = () => {
         // Set timeLimit in seconds based on timeLimit or time_duration property
         let timeLimit = 30 * 60; // Default 30 minutes in seconds
         
-        if (quizData.timeLimit) {
+        if (quizData.timeLimit && !isNaN(Number(quizData.timeLimit))) {
           // If timeLimit exists (in minutes), convert to seconds
-          timeLimit = quizData.timeLimit * 60;
-        } else if (quizData.time_duration) {
-          // If time_duration exists in HH:MM format, parse and convert to seconds
-          const [hours, minutes] = quizData.time_duration.split(':').map(Number);
-          timeLimit = (hours * 60 * 60) + (minutes * 60);
+          timeLimit = Number(quizData.timeLimit) * 60;
+        } else if (quizData.time_duration && typeof quizData.time_duration === 'string') {
+          try {
+            // If time_duration exists in HH:MM format, parse and convert to seconds
+            const timeParts = quizData.time_duration.split(':');
+            if (timeParts.length >= 2) {
+              const hours = parseInt(timeParts[0]) || 0;
+              const minutes = parseInt(timeParts[1]) || 0;
+              timeLimit = (hours * 60 * 60) + (minutes * 60);
+            }
+          } catch (error) {
+            console.error('Error parsing time_duration:', error);
+            // Keep the default time limit
+          }
         }
         
+        console.log('Setting time limit to:', timeLimit, 'seconds');
         setTimeLeft(timeLimit);
         
         // Fetch questions for user
@@ -91,9 +101,18 @@ const TakeQuiz: React.FC = () => {
   // Timer function
   useEffect(() => {
     if (!quizStarted || quizFinished) return;
+
+    console.log('Starting timer with initial value:', timeLeft);
     
     timerRef.current = setInterval(() => {
       setTimeLeft(prevTime => {
+        // Validate that prevTime is a number
+        if (typeof prevTime !== 'number' || isNaN(prevTime)) {
+          console.error('Invalid timer value:', prevTime);
+          // Reset to a valid value (5 minutes)
+          return 300;
+        }
+        
         if (prevTime <= 1) {
           // Time's up - finish the quiz
           if (timerRef.current) {
@@ -104,6 +123,12 @@ const TakeQuiz: React.FC = () => {
           finishQuiz();
           return 0;
         }
+        
+        // Log every minute for debugging
+        if (prevTime % 60 === 0) {
+          console.log('Timer update:', prevTime, 'seconds remaining');
+        }
+        
         return prevTime - 1;
       });
     }, 1000);
@@ -117,15 +142,26 @@ const TakeQuiz: React.FC = () => {
   
   const startQuiz = () => {
     // Reset and start the timer
-    if (quiz?.timeLimit) {
-      setTimeLeft(quiz.timeLimit * 60); // Convert minutes to seconds
-    } else if (quiz?.time_duration) {
-      const [hours, minutes] = quiz.time_duration.split(':').map(Number);
-      setTimeLeft((hours * 60 * 60) + (minutes * 60));
-    } else {
-      setTimeLeft(30 * 60); // Default 30 minutes
+    let timeLimit = 30 * 60; // Default 30 minutes in seconds
+    
+    if (quiz?.timeLimit && !isNaN(Number(quiz.timeLimit))) {
+      timeLimit = Number(quiz.timeLimit) * 60; // Convert minutes to seconds
+    } else if (quiz?.time_duration && typeof quiz.time_duration === 'string') {
+      try {
+        const timeParts = quiz.time_duration.split(':');
+        if (timeParts.length >= 2) {
+          const hours = parseInt(timeParts[0]) || 0;
+          const minutes = parseInt(timeParts[1]) || 0;
+          timeLimit = (hours * 60 * 60) + (minutes * 60);
+        }
+      } catch (error) {
+        console.error('Error parsing time_duration:', error);
+        // Keep the default time limit
+      }
     }
     
+    console.log('Starting quiz with time limit:', timeLimit, 'seconds');
+    setTimeLeft(timeLimit);
     setQuizStarted(true);
     startTime.current = new Date();
   };
@@ -223,9 +259,20 @@ const TakeQuiz: React.FC = () => {
   
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    // Check if seconds is a valid number
+    if (isNaN(seconds) || seconds === undefined) {
+      console.error('Invalid time value:', seconds);
+      return '00:00'; // Return default value for invalid input
+    }
+    
+    try {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60); // Ensure we have an integer
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '00:00'; // Return default value in case of any error
+    }
   };
   
   if (loading) {

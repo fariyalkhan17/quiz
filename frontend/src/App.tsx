@@ -22,6 +22,7 @@ import ManageSubjects from './components/admin/ManageSubjects';
 import ManageChapters from './components/admin/ManageChapters';
 import ManageQuizzes from './components/admin/ManageQuizzes';
 import ManageQuestions from './components/admin/ManageQuestions';
+import AdminScores from './components/admin/AdminScores';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -130,6 +131,14 @@ const App: React.FC = () => {
                   <ManageQuestions />
                 </AdminRoute>
               } 
+            />
+            <Route
+              path="/admin/scores"
+              element={
+                <AdminRoute>
+                  <AdminScores />
+                </AdminRoute>
+              }
             />
             
             {/* Default Route */}
